@@ -22,6 +22,7 @@ class IppPrintServer @Inject constructor(
 ) {
     private var serverJob: Job? = null
     private var serverSocket: ServerSocket? = null
+    private var sslServerSocket: ServerSocket? = null
 
     fun start(
         port: Int,
@@ -32,19 +33,80 @@ class IppPrintServer @Inject constructor(
         }
 
         serverJob = scope.launch(Dispatchers.IO) {
-            serverSocket = ServerSocket(port)
-            while (isActive) {
-                val socket = serverSocket?.accept() ?: break
+            val securePort = port + 1
+
+            // Start plain HTTP Server (on port)
+            try {
+                serverSocket = ServerSocket(port)
                 launch {
-                    handleClient(socket)
+                    while (isActive) {
+                        val socket = serverSocket?.accept() ?: break
+                        launch {
+                            handleClient(socket)
+                        }
+                    }
                 }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start plain HTTP Server on port $port", e)
+            }
+
+            // Start HTTPS Server (on securePort)
+            try {
+                sslServerSocket = createSSLServerSocket(securePort)
+                launch {
+                    while (isActive) {
+                        val socket = sslServerSocket?.accept() ?: break
+                        launch {
+                            handleClient(socket)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start HTTPS SSL Server on port $securePort", e)
             }
         }
+    }
+
+    private fun createSSLServerSocket(port: Int): ServerSocket {
+        val keyStore = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        val alias = "airscan_ssl_key"
+        if (!keyStore.containsAlias(alias)) {
+            val kpg = java.security.KeyPairGenerator.getInstance(
+                android.security.keystore.KeyProperties.KEY_ALGORITHM_RSA,
+                "AndroidKeyStore"
+            )
+            val start = java.util.Calendar.getInstance()
+            val end = java.util.Calendar.getInstance().apply { add(java.util.Calendar.YEAR, 5) }
+            val spec = android.security.keystore.KeyGenParameterSpec.Builder(
+                alias,
+                android.security.keystore.KeyProperties.PURPOSE_SIGN or android.security.keystore.KeyProperties.PURPOSE_VERIFY
+            )
+                .setKeySize(2048)
+                .setCertificateSubject(javax.security.auth.x500.X500Principal("CN=AirScanReceiver"))
+                .setCertificateSerialNumber(java.math.BigInteger.ONE)
+                .setCertificateNotBefore(start.time)
+                .setCertificateNotAfter(end.time)
+                .setSignaturePaddings(android.security.keystore.KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
+                .setDigests(android.security.keystore.KeyProperties.DIGEST_SHA256, android.security.keystore.KeyProperties.DIGEST_SHA512)
+                .build()
+            kpg.initialize(spec)
+            kpg.generateKeyPair()
+        }
+
+        val kmf = javax.net.ssl.KeyManagerFactory.getInstance(javax.net.ssl.KeyManagerFactory.getDefaultAlgorithm()).apply {
+            init(keyStore, null)
+        }
+        val sslContext = javax.net.ssl.SSLContext.getInstance("TLS").apply {
+            init(kmf.keyManagers, null, null)
+        }
+        return sslContext.serverSocketFactory.createServerSocket(port)
     }
 
     fun stop() {
         serverSocket?.close()
         serverSocket = null
+        sslServerSocket?.close()
+        sslServerSocket = null
         serverJob?.cancel()
         serverJob = null
     }

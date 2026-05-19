@@ -6,6 +6,7 @@ object AirScanTxtRecords {
         uuid: String,
         localAddress: String?,
         port: Int,
+        scheme: String = "http",
     ): Map<String, String> {
         val records = linkedMapOf(
             "txtvers" to "1",
@@ -22,7 +23,7 @@ object AirScanTxtRecords {
         )
 
         if (localAddress != null) {
-            records["adminurl"] = "http://$localAddress%3A$port/"
+            records["adminurl"] = "$scheme://$localAddress%3A$port/"
         }
 
         return records

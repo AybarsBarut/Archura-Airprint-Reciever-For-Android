@@ -49,6 +49,7 @@ class AirPrintMdnsResponder @Inject constructor(
             return
         }
 
+        val securePort = port + 1
         val ippTxt = AirPrintTxtRecords.build(
             serviceName = serviceName,
             uuid = airPrintDeviceIdentity.uuid,
@@ -60,15 +61,25 @@ class AirPrintMdnsResponder @Inject constructor(
             uuid = airPrintDeviceIdentity.uuid,
             localAddress = localAddress.hostAddress,
             port = port,
+            scheme = "http",
+        )
+        val uscansTxt = AirScanTxtRecords.build(
+            serviceName = "$serviceName Scanner",
+            uuid = airPrintDeviceIdentity.uuid,
+            localAddress = localAddress.hostAddress,
+            port = securePort,
+            scheme = "https",
         )
 
         val packetBuilder = AirPrintMdnsPacket(
             serviceName = serviceName,
             hostName = airPrintDeviceIdentity.hostName(),
             port = port,
+            securePort = securePort,
             localAddress = localAddress,
             ippTxtRecords = ippTxt,
             uscanTxtRecords = uscanTxt,
+            uscansTxtRecords = uscansTxt,
         )
 
         acquireMulticastLock()
