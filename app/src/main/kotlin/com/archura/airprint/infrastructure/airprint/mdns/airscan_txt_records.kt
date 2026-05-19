@@ -1,8 +1,13 @@
 package com.archura.airprint.infrastructure.airprint.mdns
 
 object AirScanTxtRecords {
-    fun build(serviceName: String, uuid: String, port: Int): Map<String, String> {
-        return mapOf(
+    fun build(
+        serviceName: String,
+        uuid: String,
+        localAddress: String?,
+        port: Int,
+    ): Map<String, String> {
+        val records = linkedMapOf(
             "txtvers" to "1",
             "ty" to serviceName,
             "note" to "AirScan Android",
@@ -13,7 +18,13 @@ object AirScanTxtRecords {
             "is" to "platen",
             "duplex" to "F",
             "UUID" to uuid,
-            "adminurl" to "http://localhost:$port/",
+            "uuid" to uuid,
         )
+
+        if (localAddress != null) {
+            records["adminurl"] = "http://$localAddress:$port/"
+        }
+
+        return records
     }
 }

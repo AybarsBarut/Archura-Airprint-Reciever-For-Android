@@ -58,6 +58,7 @@ class AirPrintMdnsResponder @Inject constructor(
         val uscanTxt = AirScanTxtRecords.build(
             serviceName = "$serviceName Scanner",
             uuid = airPrintDeviceIdentity.uuid,
+            localAddress = localAddress.hostAddress,
             port = port,
         )
 

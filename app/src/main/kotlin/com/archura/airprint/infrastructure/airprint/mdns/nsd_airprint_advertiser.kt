@@ -44,6 +44,7 @@ class NsdAirPrintAdvertiser @Inject constructor(
             AirScanTxtRecords.build(
                 serviceName = "$serviceName Scanner",
                 uuid = airPrintDeviceIdentity.uuid,
+                localAddress = null,
                 port = port,
             ).forEach { (key, value) ->
                 setAttribute(key, value)
