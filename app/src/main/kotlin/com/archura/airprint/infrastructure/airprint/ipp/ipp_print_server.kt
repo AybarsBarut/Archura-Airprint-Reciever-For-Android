@@ -6,12 +6,15 @@ import java.net.ServerSocket
 import java.net.Socket
 import javax.inject.Inject
 import javax.inject.Singleton
+import javax.net.ssl.KeyManagerFactory
+import javax.net.ssl.SSLContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.tls.HeldCertificate
 
 import com.archura.airprint.infrastructure.airprint.airscan.AirScanProtocolHandler
 
@@ -35,30 +38,28 @@ class IppPrintServer @Inject constructor(
         serverJob = scope.launch(Dispatchers.IO) {
             val securePort = port + 1
 
-            // Start plain HTTP Server (on port)
+            // Start plain HTTP Server
             try {
                 serverSocket = ServerSocket(port)
+                Log.i(TAG, "Plain HTTP server started on port $port")
                 launch {
                     while (isActive) {
                         val socket = serverSocket?.accept() ?: break
-                        launch {
-                            handleClient(socket)
-                        }
+                        launch { handleClient(socket) }
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start plain HTTP Server on port $port", e)
             }
 
-            // Start HTTPS Server (on securePort)
+            // Start HTTPS Server using okhttp-tls self-signed cert
             try {
                 sslServerSocket = createSSLServerSocket(securePort)
+                Log.i(TAG, "HTTPS SSL server started on port $securePort")
                 launch {
                     while (isActive) {
                         val socket = sslServerSocket?.accept() ?: break
-                        launch {
-                            handleClient(socket)
-                        }
+                        launch { handleClient(socket) }
                     }
                 }
             } catch (e: Exception) {
@@ -68,37 +69,29 @@ class IppPrintServer @Inject constructor(
     }
 
     private fun createSSLServerSocket(port: Int): ServerSocket {
-        val keyStore = java.security.KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
-        val alias = "airscan_ssl_key"
-        if (!keyStore.containsAlias(alias)) {
-            val kpg = java.security.KeyPairGenerator.getInstance(
-                android.security.keystore.KeyProperties.KEY_ALGORITHM_RSA,
-                "AndroidKeyStore"
+        val certificate = HeldCertificate.Builder()
+            .commonName("AirScan Receiver")
+            .duration(5 * 365, java.util.concurrent.TimeUnit.DAYS)
+            .build()
+
+        val keyStore = java.security.KeyStore.getInstance("PKCS12").apply {
+            load(null, null)
+            setKeyEntry(
+                "airscan",
+                certificate.keyPair.private,
+                null,
+                arrayOf(certificate.certificate),
             )
-            val start = java.util.Calendar.getInstance()
-            val end = java.util.Calendar.getInstance().apply { add(java.util.Calendar.YEAR, 5) }
-            val spec = android.security.keystore.KeyGenParameterSpec.Builder(
-                alias,
-                android.security.keystore.KeyProperties.PURPOSE_SIGN or android.security.keystore.KeyProperties.PURPOSE_VERIFY
-            )
-                .setKeySize(2048)
-                .setCertificateSubject(javax.security.auth.x500.X500Principal("CN=AirScanReceiver"))
-                .setCertificateSerialNumber(java.math.BigInteger.ONE)
-                .setCertificateNotBefore(start.time)
-                .setCertificateNotAfter(end.time)
-                .setSignaturePaddings(android.security.keystore.KeyProperties.SIGNATURE_PADDING_RSA_PKCS1)
-                .setDigests(android.security.keystore.KeyProperties.DIGEST_SHA256, android.security.keystore.KeyProperties.DIGEST_SHA512)
-                .build()
-            kpg.initialize(spec)
-            kpg.generateKeyPair()
         }
 
-        val kmf = javax.net.ssl.KeyManagerFactory.getInstance(javax.net.ssl.KeyManagerFactory.getDefaultAlgorithm()).apply {
+        val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm()).apply {
             init(keyStore, null)
         }
-        val sslContext = javax.net.ssl.SSLContext.getInstance("TLS").apply {
+
+        val sslContext = SSLContext.getInstance("TLS").apply {
             init(kmf.keyManagers, null, null)
         }
+
         return sslContext.serverSocketFactory.createServerSocket(port)
     }
 

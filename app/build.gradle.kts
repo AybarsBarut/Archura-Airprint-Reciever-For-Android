@@ -74,6 +74,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.moshi.kotlin)
     implementation(libs.okhttp)
+    implementation(libs.okhttp.tls)
     implementation(libs.android.image.cropper)
 
     kapt(libs.hilt.compiler)
