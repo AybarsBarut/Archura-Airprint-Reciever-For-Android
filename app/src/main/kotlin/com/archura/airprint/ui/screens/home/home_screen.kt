@@ -1,5 +1,8 @@
 package com.archura.airprint.ui.screens.home
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,18 +13,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -36,6 +46,76 @@ fun HomeScreen(
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val pendingScanJobId by viewModel.scanRequestManager.pendingJobId.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+
+    // Tracks whether the "iOS is requesting a scan" dialog is showing
+    var showScanDialog by remember { mutableStateOf(false) }
+    var activeScanJobId by remember { mutableStateOf<String?>(null) }
+
+    // Launcher for the scan-triggered file picker
+    val scanFilePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+    ) { uri: Uri? ->
+        val jobId = activeScanJobId
+        if (jobId != null) {
+            if (uri != null) {
+                viewModel.fulfillScanRequest(jobId, uri, context.contentResolver)
+            } else {
+                viewModel.cancelScanRequest(jobId)
+            }
+        }
+        activeScanJobId = null
+        showScanDialog = false
+    }
+
+    // Launcher for the manual "Share File with iOS" button
+    val manualFilePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent(),
+    ) { uri: Uri? ->
+        if (uri != null) viewModel.importFile(uri)
+    }
+
+    // Watch for incoming iOS scan requests
+    LaunchedEffect(pendingScanJobId) {
+        val jobId = pendingScanJobId
+        if (jobId != null) {
+            activeScanJobId = jobId
+            showScanDialog = true
+        }
+    }
+
+    // Dialog shown when iOS presses "Scan"
+    if (showScanDialog && activeScanJobId != null) {
+        AlertDialog(
+            onDismissRequest = {
+                activeScanJobId?.let { viewModel.cancelScanRequest(it) }
+                activeScanJobId = null
+                showScanDialog = false
+            },
+            title = { Text("📲 iOS tarama isteği") },
+            text = {
+                Text(
+                    "iPhone/iPad, cihazınızdan bir dosya taramak istiyor.\n\n" +
+                        "İletmek istediğiniz görsel veya PDF'i seçin.",
+                )
+            },
+            confirmButton = {
+                Button(onClick = { scanFilePickerLauncher.launch("*/*") }) {
+                    Text("Dosya Seç")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    activeScanJobId?.let { viewModel.cancelScanRequest(it) }
+                    activeScanJobId = null
+                    showScanDialog = false
+                }) {
+                    Text("İptal")
+                }
+            },
+        )
+    }
 
     HomeContent(
         uiState = uiState,
@@ -43,7 +123,7 @@ fun HomeScreen(
         onDeleteImage = viewModel::deleteImage,
         onOpenImage = onOpenImage,
         onOpenSettings = onOpenSettings,
-        onImportFile = viewModel::importFile,
+        onManualImport = { manualFilePickerLauncher.launch("*/*") },
     )
 }
 
@@ -55,16 +135,8 @@ private fun HomeContent(
     onDeleteImage: (String) -> Unit,
     onOpenImage: (String) -> Unit,
     onOpenSettings: () -> Unit,
-    onImportFile: (android.net.Uri) -> Unit,
+    onManualImport: () -> Unit,
 ) {
-    val filePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
-        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri != null) {
-            onImportFile(uri)
-        }
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
@@ -106,11 +178,11 @@ private fun HomeContent(
                 )
             }
 
-            androidx.compose.material3.OutlinedButton(
-                onClick = { filePickerLauncher.launch("*/*") },
+            OutlinedButton(
+                onClick = onManualImport,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text(text = "Share File with iOS (Select Image/PDF)")
+                Text(text = "📁 iOS'a Dosya Gönder (Manuel)")
             }
 
             if (uiState.images.isEmpty()) {

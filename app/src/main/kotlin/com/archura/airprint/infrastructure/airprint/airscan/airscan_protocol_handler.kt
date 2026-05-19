@@ -1,11 +1,6 @@
 package com.archura.airprint.infrastructure.airprint.airscan
 
 import android.util.Log
-import com.archura.airprint.data.local.FileStorageManager
-import com.archura.airprint.domain.model.DocumentFormat
-import java.io.File
-import java.util.UUID
-import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -13,10 +8,8 @@ private const val TAG = "AirScanHandler"
 
 @Singleton
 class AirScanProtocolHandler @Inject constructor(
-    private val fileStorageManager: FileStorageManager,
+    private val scanRequestManager: ScanRequestManager,
 ) {
-    // jobId → "pending" | "delivered"
-    private val jobs = ConcurrentHashMap<String, String>()
 
     fun handle(headers: String, body: ByteArray): AirScanResponse {
         val requestLine = headers.lineSequence().firstOrNull() ?: ""
@@ -125,9 +118,7 @@ class AirScanProtocolHandler @Inject constructor(
     }
 
     private fun createScanJob(): AirScanResponse {
-        val jobId = UUID.randomUUID().toString()
-        jobs[jobId] = "pending"
-        Log.i(TAG, "Created scan job: $jobId (total pending: ${jobs.size})")
+        val jobId = scanRequestManager.createJob()
         return AirScanResponse(
             statusCode = 201,
             contentType = "text/plain",
@@ -137,48 +128,29 @@ class AirScanProtocolHandler @Inject constructor(
     }
 
     private fun getNextDocument(jobId: String): AirScanResponse {
-        val state = jobs[jobId]
-        Log.i(TAG, "NextDocument for job $jobId — state=$state")
-
-        if (state == "delivered") {
-            // Already delivered once — signal end-of-job
-            jobs.remove(jobId)
-            Log.i(TAG, "Job $jobId completed")
+        // Already delivered → signal end-of-job
+        if (scanRequestManager.isDelivered(jobId)) {
+            scanRequestManager.cleanupJob(jobId)
+            Log.i(TAG, "Job $jobId: already delivered → 404")
             return AirScanResponse(404, "text/plain", "No more documents".toByteArray())
         }
 
-        // Pick the most recently imported file
-        val allFiles = fileStorageManager.listReceivedImages().filter { image ->
-            image.format == DocumentFormat.JPEG ||
-                image.format == DocumentFormat.PNG ||
-                image.format == DocumentFormat.PDF
+        // Still waiting for user to pick a file → 503 (SwiftESCL retries indefinitely)
+        if (scanRequestManager.isWaiting(jobId)) {
+            Log.i(TAG, "Job $jobId: waiting for file selection → 503")
+            return AirScanResponse(503, "text/plain", "Scanner warming up".toByteArray())
         }
 
-        val target = allFiles.firstOrNull()
-        if (target == null) {
-            Log.w(TAG, "No file available to serve for job $jobId")
-            return AirScanResponse(404, "text/plain", "No documents available to scan".toByteArray())
+        // Document is ready — serve it
+        val doc = scanRequestManager.getDocument(jobId)
+        if (doc == null) {
+            Log.w(TAG, "Job $jobId: no document found → 404")
+            return AirScanResponse(404, "text/plain", "No document available".toByteArray())
         }
 
-        val file = File(target.path)
-        if (!file.exists()) {
-            Log.w(TAG, "File missing: ${target.path}")
-            return AirScanResponse(404, "text/plain", "File not found".toByteArray())
-        }
-
-        val contentType = when (target.format) {
-            DocumentFormat.PNG -> "image/png"
-            DocumentFormat.PDF -> "application/pdf"
-            else -> "image/jpeg"
-        }
-
-        val bytes = file.readBytes()
-        Log.i(TAG, "Serving ${file.name} (${bytes.size} bytes, $contentType) for job $jobId")
-
-        // Mark as delivered so next call returns 404 (end-of-job)
-        jobs[jobId] = "delivered"
-
-        return AirScanResponse(200, contentType, bytes)
+        Log.i(TAG, "Job $jobId: serving ${doc.bytes.size} bytes (${doc.contentType})")
+        scanRequestManager.markDelivered(jobId)
+        return AirScanResponse(200, doc.contentType, doc.bytes)
     }
 }
 
