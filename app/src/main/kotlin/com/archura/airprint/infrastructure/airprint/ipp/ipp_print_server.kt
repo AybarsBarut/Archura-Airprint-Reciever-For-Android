@@ -266,7 +266,9 @@ class IppPrintServer @Inject constructor(
         val statusText = when (response.statusCode) {
             200 -> "OK"
             201 -> "Created"
-            else -> "Not Found"
+            404 -> "Not Found"
+            503 -> "Service Unavailable"
+            else -> "OK"
         }
         val headers = buildString {
             append("HTTP/1.1 ${response.statusCode} $statusText\r\n")

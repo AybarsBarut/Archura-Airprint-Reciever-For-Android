@@ -8,6 +8,7 @@ import androidx.lifecycle.viewModelScope
 import com.archura.airprint.domain.repository.PrinterStatusRepository
 import com.archura.airprint.domain.repository.ReceivedImagesRepository
 import com.archura.airprint.infrastructure.airprint.AirPrintServiceController
+import com.archura.airprint.infrastructure.airprint.airscan.ImageToPdfConverter
 import com.archura.airprint.infrastructure.airprint.airscan.ScanRequestManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -84,15 +85,22 @@ class HomeViewModel @Inject constructor(
             withContext(Dispatchers.IO) {
                 try {
                     val mimeType = contentResolver.getType(uri) ?: "image/jpeg"
-                    val contentType = when {
-                        mimeType.contains("pdf") -> "application/pdf"
-                        mimeType.contains("png") -> "image/png"
-                        else -> "image/jpeg"
-                    }
-                    val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
-                    if (bytes != null && bytes.isNotEmpty()) {
-                        scanRequestManager.fulfillJob(jobId, bytes, contentType)
-                        Log.i(TAG, "Fulfilled scan job $jobId with ${bytes.size} bytes ($contentType)")
+                    val rawBytes = contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    
+                    if (rawBytes != null && rawBytes.isNotEmpty()) {
+                        val isPdf = mimeType.contains("pdf", ignoreCase = true)
+                        
+                        val (finalBytes, contentType) = if (isPdf) {
+                            Log.i(TAG, "User selected a PDF. Sending as-is.")
+                            rawBytes to "application/pdf"
+                        } else {
+                            Log.i(TAG, "User selected an image ($mimeType). Wrapping into PDF.")
+                            val pdfBytes = ImageToPdfConverter.convert(rawBytes)
+                            pdfBytes to "application/pdf"
+                        }
+                        
+                        scanRequestManager.fulfillJob(jobId, finalBytes, contentType)
+                        Log.i(TAG, "Fulfilled scan job $jobId with ${finalBytes.size} bytes ($contentType)")
                     } else {
                         Log.w(TAG, "File was empty or unreadable for job $jobId")
                         scanRequestManager.cancelJob(jobId)
