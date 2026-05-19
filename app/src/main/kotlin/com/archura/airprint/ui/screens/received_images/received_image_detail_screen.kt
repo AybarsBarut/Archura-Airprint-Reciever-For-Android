@@ -48,6 +48,7 @@ import java.io.File
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Share
 
 @Composable
 fun ReceivedImageDetailScreen(
@@ -114,11 +115,10 @@ private fun ReceivedImageDetailContent(
                                 context.startActivity(Intent.createChooser(intent, "Share Document"))
                             }
                         ) {
-                            Text(
-                                text = "Share",
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(horizontal = 8.dp)
+                            Icon(
+                                imageVector = Icons.Default.Share,
+                                contentDescription = "Share",
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     }

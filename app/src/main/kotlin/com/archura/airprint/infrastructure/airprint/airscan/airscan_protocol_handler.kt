@@ -17,11 +17,13 @@ class AirScanProtocolHandler @Inject constructor(
         val method = parts.getOrNull(0) ?: "GET"
         val path = parts.getOrNull(1) ?: "/"
 
+        val cleanPath = path.substringBefore("?").removeSuffix("/")
+
         return when {
-            method == "GET" && path.endsWith("/ScannerCapabilities") -> getScannerCapabilities()
-            method == "GET" && path.endsWith("/ScannerStatus") -> getScannerStatus()
-            method == "POST" && path.endsWith("/ScanJobs") -> createScanJob()
-            method == "GET" && path.contains("/ScanJobs/") && path.endsWith("/NextDocument") -> getNextDocument()
+            method == "GET" && cleanPath.endsWith("/ScannerCapabilities") -> getScannerCapabilities()
+            method == "GET" && cleanPath.endsWith("/ScannerStatus") -> getScannerStatus()
+            method == "POST" && cleanPath.endsWith("/ScanJobs") -> createScanJob()
+            method == "GET" && cleanPath.contains("/ScanJobs/") && cleanPath.endsWith("/NextDocument") -> getNextDocument()
             else -> AirScanResponse(404, "text/plain", "Not Found".toByteArray())
         }
     }
