@@ -38,6 +38,16 @@ import com.archura.airprint.domain.model.DocumentFormat
 import com.archura.airprint.domain.model.ReceivedImage
 import com.archura.airprint.util.formatTimestamp
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import com.canhub.cropper.CropImageContract
+import com.canhub.cropper.CropImageContractOptions
+import com.canhub.cropper.CropImageOptions
+import java.io.File
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+
 @Composable
 fun ReceivedImageDetailScreen(
     onNavigateBack: () -> Unit,
@@ -49,8 +59,10 @@ fun ReceivedImageDetailScreen(
         uiState = uiState,
         onNavigateBack = onNavigateBack,
         onCropSquare = viewModel::cropSquare,
+        onManualCrop = viewModel::applyManualCrop,
         onRotateLeft = viewModel::rotateLeft,
         onRotateRight = viewModel::rotateRight,
+        onUndoEdit = viewModel::undoEdit,
         onSaveToGallery = viewModel::saveToGallery,
     )
 }
@@ -61,8 +73,10 @@ private fun ReceivedImageDetailContent(
     uiState: ReceivedImageDetailState,
     onNavigateBack: () -> Unit,
     onCropSquare: () -> Unit,
+    onManualCrop: (Uri) -> Unit,
     onRotateLeft: () -> Unit,
     onRotateRight: () -> Unit,
+    onUndoEdit: () -> Unit,
     onSaveToGallery: () -> Unit,
 ) {
     Scaffold(
@@ -88,10 +102,13 @@ private fun ReceivedImageDetailContent(
             ImageActions(
                 image = image,
                 isBusy = uiState.isBusy,
+                hasUndo = uiState.hasUndo,
                 message = uiState.message,
                 onCropSquare = onCropSquare,
+                onManualCrop = onManualCrop,
                 onRotateLeft = onRotateLeft,
                 onRotateRight = onRotateRight,
+                onUndoEdit = onUndoEdit,
                 onSaveToGallery = onSaveToGallery,
                 modifier = Modifier
                     .fillMaxSize()
@@ -105,14 +122,23 @@ private fun ReceivedImageDetailContent(
 private fun ImageActions(
     image: ReceivedImage,
     isBusy: Boolean,
+    hasUndo: Boolean,
     message: String?,
     onCropSquare: () -> Unit,
+    onManualCrop: (Uri) -> Unit,
     onRotateLeft: () -> Unit,
     onRotateRight: () -> Unit,
+    onUndoEdit: () -> Unit,
     onSaveToGallery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isEditable = (image.format == DocumentFormat.JPEG || image.format == DocumentFormat.PNG) && !isBusy
+
+    val cropLauncher = rememberLauncherForActivityResult(CropImageContract()) { result ->
+        if (result.isSuccessful && result.uriContent != null) {
+            onManualCrop(result.uriContent!!)
+        }
+    }
 
     Column(
         modifier = modifier
@@ -165,6 +191,38 @@ private fun ImageActions(
                 modifier = Modifier.weight(1f),
             ) {
                 Text(text = "Crop square")
+            }
+            OutlinedButton(
+                onClick = {
+                    cropLauncher.launch(
+                        CropImageContractOptions(
+                            uri = Uri.fromFile(File(image.path)),
+                            cropImageOptions = CropImageOptions(
+                                imageSourceIncludeGallery = false,
+                                imageSourceIncludeCamera = false
+                            )
+                        )
+                    )
+                },
+                enabled = isEditable,
+                modifier = Modifier.weight(1f),
+            ) {
+                Text(text = "Manual Crop")
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (hasUndo) {
+                OutlinedButton(
+                    onClick = onUndoEdit,
+                    enabled = !isBusy,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(text = "Undo Edit")
+                }
             }
             Button(
                 onClick = onSaveToGallery,

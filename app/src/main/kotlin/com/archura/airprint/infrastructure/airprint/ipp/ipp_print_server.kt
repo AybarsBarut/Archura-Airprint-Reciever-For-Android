@@ -13,9 +13,12 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+import com.archura.airprint.infrastructure.airprint.airscan.AirScanProtocolHandler
+
 @Singleton
 class IppPrintServer @Inject constructor(
     private val ippProtocolHandler: IppProtocolHandler,
+    private val airScanProtocolHandler: AirScanProtocolHandler,
 ) {
     private var serverJob: Job? = null
     private var serverSocket: ServerSocket? = null
@@ -57,14 +60,23 @@ class IppPrintServer @Inject constructor(
                         "headers=${request.headers.lineSequence().firstOrNull()} " +
                         "body=${request.body.size} bytes",
                 )
-                val ippResponse = runCatching {
-                    ippProtocolHandler.handle(request.body, senderAddress)
-                }.getOrElse { error ->
-                    Log.e(TAG, "IPP request failed", error)
-                    IppResponseBuilder().buildBadRequestResponse(requestId = 1)
-                }
+                val requestLine = request.headers.lineSequence().firstOrNull() ?: ""
+                val path = requestLine.split(" ").getOrNull(1) ?: "/"
 
-                clientSocket.getOutputStream().writeHttpResponse(ippResponse)
+                if (path.startsWith("/eSCL/")) {
+                    Log.i(TAG, "AirScan request from $senderAddress: $requestLine")
+                    val response = airScanProtocolHandler.handle(request.headers, request.body)
+                    clientSocket.getOutputStream().writeAirScanResponse(response)
+                } else {
+                    val ippResponse = runCatching {
+                        ippProtocolHandler.handle(request.body, senderAddress)
+                    }.getOrElse { error ->
+                        Log.e(TAG, "IPP request failed", error)
+                        IppResponseBuilder().buildBadRequestResponse(requestId = 1)
+                    }
+
+                    clientSocket.getOutputStream().writeHttpResponse(ippResponse)
+                }
             }
         }
     }
@@ -192,6 +204,30 @@ class IppPrintServer @Inject constructor(
 
         write(headers)
         write(ippResponse)
+        flush()
+    }
+
+    private fun java.io.OutputStream.writeAirScanResponse(response: com.archura.airprint.infrastructure.airprint.airscan.AirScanResponse) {
+        val statusText = when (response.statusCode) {
+            200 -> "OK"
+            201 -> "Created"
+            else -> "Not Found"
+        }
+        val headers = buildString {
+            append("HTTP/1.1 ${response.statusCode} $statusText\r\n")
+            append("Content-Type: ${response.contentType}\r\n")
+            append("Content-Length: ${response.body.size}\r\n")
+            response.headers.forEach { (key, value) ->
+                append("$key: $value\r\n")
+            }
+            append("Connection: close\r\n")
+            append("\r\n")
+        }.toByteArray(Charsets.ISO_8859_1)
+
+        write(headers)
+        if (response.body.isNotEmpty()) {
+            write(response.body)
+        }
         flush()
     }
 

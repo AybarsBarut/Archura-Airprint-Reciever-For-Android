@@ -33,9 +33,10 @@ class ReceivedImagesRepositoryImpl @Inject constructor(
     ): ReceivedImage {
         return withContext(Dispatchers.IO) {
             val savedImage = when {
-                shouldConvertPdfToJpeg(format) -> localDataSource.savePdfFirstPageAsJpeg(
+                shouldConvertPdfToImage(format) -> localDataSource.savePdfAllPagesAsImages(
                     documentBytes = documentBytes,
                     senderAddress = senderAddress,
+                    format = if (sharedPrefManager.readDocumentConversionMode() == DocumentConversionMode.PDF_TO_PNG) DocumentFormat.PNG else DocumentFormat.JPEG
                 )
                 else -> localDataSource.saveReceivedDocument(
                     documentBytes = documentBytes,
@@ -53,6 +54,28 @@ class ReceivedImagesRepositoryImpl @Inject constructor(
             val croppedImage = localDataSource.cropReceivedImage(imageId)
             refresh()
             croppedImage
+        }
+    }
+
+    override suspend fun applyManualCrop(imageId: String, uri: android.net.Uri): ReceivedImage {
+        return withContext(Dispatchers.IO) {
+            val croppedImage = localDataSource.applyManualCrop(imageId, uri)
+            refresh()
+            croppedImage
+        }
+    }
+
+    override suspend fun undoEdit(imageId: String): ReceivedImage {
+        return withContext(Dispatchers.IO) {
+            val restoredImage = localDataSource.undoEdit(imageId)
+            refresh()
+            restoredImage
+        }
+    }
+
+    override suspend fun hasUndo(imageId: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            localDataSource.hasUndo(imageId)
         }
     }
 
@@ -87,8 +110,9 @@ class ReceivedImagesRepositoryImpl @Inject constructor(
         }
     }
 
-    private fun shouldConvertPdfToJpeg(format: DocumentFormat): Boolean {
+    private fun shouldConvertPdfToImage(format: DocumentFormat): Boolean {
+        val mode = sharedPrefManager.readDocumentConversionMode()
         return format == DocumentFormat.PDF &&
-            sharedPrefManager.readDocumentConversionMode() == DocumentConversionMode.PDF_FIRST_PAGE_TO_JPEG
+            (mode == DocumentConversionMode.PDF_FIRST_PAGE_TO_JPEG || mode == DocumentConversionMode.PDF_TO_PNG)
     }
 }

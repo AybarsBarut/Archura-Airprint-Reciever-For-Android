@@ -26,8 +26,10 @@ class ReceivedImageDetailViewModel @Inject constructor(
     init {
         viewModelScope.launch {
             receivedImagesRepository.getReceivedImages().collect { images ->
+                val image = images.firstOrNull { it.id == imageId }
+                val hasUndo = if (image != null) receivedImagesRepository.hasUndo(imageId) else false
                 mutableUiState.update { state ->
-                    state.copy(image = images.firstOrNull { image -> image.id == imageId })
+                    state.copy(image = image, hasUndo = hasUndo)
                 }
             }
         }
@@ -36,6 +38,18 @@ class ReceivedImageDetailViewModel @Inject constructor(
     fun cropSquare() {
         runImageOperation(successMessage = "Image cropped") {
             receivedImagesRepository.cropReceivedImage(imageId)
+        }
+    }
+
+    fun applyManualCrop(uri: android.net.Uri) {
+        runImageOperation(successMessage = "Image manually cropped") {
+            receivedImagesRepository.applyManualCrop(imageId, uri)
+        }
+    }
+
+    fun undoEdit() {
+        runImageOperation(successMessage = "Edit reverted") {
+            receivedImagesRepository.undoEdit(imageId)
         }
     }
 
@@ -64,9 +78,11 @@ class ReceivedImageDetailViewModel @Inject constructor(
         viewModelScope.launch {
             mutableUiState.update { state -> state.copy(isBusy = true, message = null) }
             val result = runCatching { operation() }
+            val hasUndo = receivedImagesRepository.hasUndo(imageId)
             mutableUiState.update { state ->
                 state.copy(
                     isBusy = false,
+                    hasUndo = hasUndo,
                     message = result.fold(
                         onSuccess = { successMessage },
                         onFailure = { error -> error.message ?: "Image action failed" },

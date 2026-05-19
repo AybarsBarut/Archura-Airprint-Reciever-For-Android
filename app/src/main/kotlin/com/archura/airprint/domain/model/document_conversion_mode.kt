@@ -10,7 +10,11 @@ enum class DocumentConversionMode(
     ),
     PDF_FIRST_PAGE_TO_JPEG(
         displayName = "PDF to JPEG",
-        description = "Render the first PDF page as a JPEG image for the gallery.",
+        description = "Render all PDF pages as separate JPEG images for the gallery.",
+    ),
+    PDF_TO_PNG(
+        displayName = "PDF to PNG",
+        description = "Render all PDF pages as separate PNG images for the gallery.",
     );
 
     companion object {

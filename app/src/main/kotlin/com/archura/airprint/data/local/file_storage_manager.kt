@@ -53,38 +53,72 @@ class FileStorageManager @Inject constructor(
         )
     }
 
-    fun savePdfFirstPageAsJpeg(
+    fun savePdfAllPagesAsImages(
         documentBytes: ByteArray,
         senderAddress: String?,
-    ): ReceivedImage {
+        format: DocumentFormat,
+    ): List<ReceivedImage> {
         val now = System.currentTimeMillis()
         val tempPdfFile = File(cacheDirectory, "${now}_${UUID.randomUUID()}.pdf")
         tempPdfFile.writeBytes(documentBytes)
 
         return try {
-            val jpegFile = File(receivedDirectory, "${now}_${UUID.randomUUID()}.${DocumentFormat.JPEG.extension}")
-            renderPdfFirstPageToJpeg(
+            val generatedImages = mutableListOf<ReceivedImage>()
+            renderPdfPagesToImages(
                 pdfFile = tempPdfFile,
-                targetFile = jpegFile,
-            )
-            jpegFile.toReceivedImage(
                 timestampMillis = now,
-                format = DocumentFormat.JPEG,
                 senderAddress = senderAddress,
+                format = format,
+                onImageGenerated = { generatedImages.add(it) }
             )
+            generatedImages
         } finally {
             tempPdfFile.delete()
         }
     }
 
+    fun undoEdit(imageId: String): ReceivedImage {
+        val imageFile = findReceivedFile(imageId)
+        val backupFile = File(imageFile.absolutePath + ".bak")
+        require(backupFile.exists()) { "No backup available to undo" }
+        backupFile.copyTo(imageFile, overwrite = true)
+        imageFile.setLastModified(System.currentTimeMillis())
+        backupFile.delete()
+        return imageFile.toReceivedImage()
+    }
+
+    fun hasUndo(imageId: String): Boolean {
+        val imageFile = findReceivedFile(imageId)
+        return File(imageFile.absolutePath + ".bak").exists()
+    }
+
+    fun applyManualCrop(imageId: String, croppedImageUri: Uri): ReceivedImage {
+        val imageFile = findReceivedFile(imageId)
+        createBackup(imageFile)
+        val resolver = context.contentResolver
+        resolver.openInputStream(croppedImageUri)?.use { input ->
+            imageFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+        imageFile.setLastModified(System.currentTimeMillis())
+        return imageFile.toReceivedImage()
+    }
+
+    private fun createBackup(imageFile: File) {
+        val backupFile = File(imageFile.absolutePath + ".bak")
+        imageFile.copyTo(backupFile, overwrite = true)
+    }
+
     fun cropCenterSquare(imageId: String): ReceivedImage {
         val imageFile = findReceivedFile(imageId)
-        val bitmap = decodeJpeg(imageFile)
+        createBackup(imageFile)
+        val bitmap = decodeImage(imageFile)
         val size = minOf(bitmap.width, bitmap.height)
         val left = (bitmap.width - size) / 2
         val top = (bitmap.height - size) / 2
         val cropped = Bitmap.createBitmap(bitmap, left, top, size, size)
-        writeBitmapAsJpeg(cropped, imageFile)
+        writeBitmap(cropped, imageFile)
         bitmap.recycle()
         cropped.recycle()
         imageFile.setLastModified(System.currentTimeMillis())
@@ -95,7 +129,10 @@ class FileStorageManager @Inject constructor(
         receivedDirectory
             .listFiles()
             ?.firstOrNull { file -> file.nameWithoutExtension == imageId }
-            ?.delete()
+            ?.let { file ->
+                file.delete()
+                File(file.absolutePath + ".bak").delete()
+            }
     }
 
     fun rotateImage(
@@ -103,10 +140,11 @@ class FileStorageManager @Inject constructor(
         degrees: Float,
     ): ReceivedImage {
         val imageFile = findReceivedFile(imageId)
-        val bitmap = decodeJpeg(imageFile)
+        createBackup(imageFile)
+        val bitmap = decodeImage(imageFile)
         val matrix = Matrix().apply { postRotate(degrees) }
         val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
-        writeBitmapAsJpeg(rotated, imageFile)
+        writeBitmap(rotated, imageFile)
         bitmap.recycle()
         rotated.recycle()
         imageFile.setLastModified(System.currentTimeMillis())
@@ -145,7 +183,7 @@ class FileStorageManager @Inject constructor(
             return directory
         }
 
-    private fun decodeJpeg(imageFile: File): Bitmap {
+    private fun decodeImage(imageFile: File): Bitmap {
         require(imageFile.extension.toDocumentFormat() in listOf(DocumentFormat.JPEG, DocumentFormat.PNG)) {
             "Only JPEG/PNG images can be edited"
         }
@@ -161,30 +199,38 @@ class FileStorageManager @Inject constructor(
             ?: error("Received image not found: $imageId")
     }
 
-    private fun renderPdfFirstPageToJpeg(
+    private fun renderPdfPagesToImages(
         pdfFile: File,
-        targetFile: File,
+        timestampMillis: Long,
+        senderAddress: String?,
+        format: DocumentFormat,
+        onImageGenerated: (ReceivedImage) -> Unit,
     ) {
         ParcelFileDescriptor.open(pdfFile, ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
             PdfRenderer(descriptor).use { renderer ->
-                renderFirstPage(renderer, targetFile)
+                require(renderer.pageCount > 0) {
+                    "PDF has no pages"
+                }
+
+                for (pageIndex in 0 until renderer.pageCount) {
+                    renderer.openPage(pageIndex).use { page ->
+                        val bitmap = page.createBitmap()
+                        val targetFile = File(receivedDirectory, "${timestampMillis}_${UUID.randomUUID()}_page${pageIndex + 1}.${format.extension}")
+                        
+                        renderPageToBitmap(page, bitmap)
+                        writeBitmap(bitmap, targetFile)
+                        bitmap.recycle()
+                        
+                        onImageGenerated(
+                            targetFile.toReceivedImage(
+                                timestampMillis = timestampMillis + pageIndex, // offset by page index to sort properly
+                                format = format,
+                                senderAddress = senderAddress,
+                            )
+                        )
+                    }
+                }
             }
-        }
-    }
-
-    private fun renderFirstPage(
-        renderer: PdfRenderer,
-        targetFile: File,
-    ) {
-        require(renderer.pageCount > 0) {
-            "PDF has no pages"
-        }
-
-        renderer.openPage(FIRST_PAGE_INDEX).use { page ->
-            val bitmap = page.createBitmap()
-            renderPageToBitmap(page, bitmap)
-            writeBitmapAsJpeg(bitmap, targetFile)
-            bitmap.recycle()
         }
     }
 
@@ -211,12 +257,17 @@ class FileStorageManager @Inject constructor(
         )
     }
 
-    private fun writeBitmapAsJpeg(
+    private fun writeBitmap(
         bitmap: Bitmap,
         targetFile: File,
     ) {
+        val compressFormat = if (targetFile.extension.lowercase() == "png") {
+            Bitmap.CompressFormat.PNG
+        } else {
+            Bitmap.CompressFormat.JPEG
+        }
         FileOutputStream(targetFile).use { output ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, output)
+            bitmap.compress(compressFormat, 100, output)
         }
     }
 

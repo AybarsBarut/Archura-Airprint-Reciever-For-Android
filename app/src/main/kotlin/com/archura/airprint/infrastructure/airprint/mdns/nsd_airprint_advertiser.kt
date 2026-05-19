@@ -14,6 +14,7 @@ class NsdAirPrintAdvertiser @Inject constructor(
 ) {
     private val nsdManager = context.getSystemService(NsdManager::class.java)
     private var registrationListener: NsdManager.RegistrationListener? = null
+    private var uscanRegistrationListener: NsdManager.RegistrationListener? = null
 
     fun register(
         serviceName: String,
@@ -30,6 +31,19 @@ class NsdAirPrintAdvertiser @Inject constructor(
                 serviceName = serviceName,
                 uuid = airPrintDeviceIdentity.uuid,
                 localAddress = null,
+                port = port,
+            ).forEach { (key, value) ->
+                setAttribute(key, value)
+            }
+        }
+
+        val uscanServiceInfo = NsdServiceInfo().apply {
+            this.serviceName = serviceName
+            serviceType = USCAN_SERVICE_TYPE
+            this.port = port
+            AirScanTxtRecords.build(
+                serviceName = serviceName,
+                uuid = airPrintDeviceIdentity.uuid,
                 port = port,
             ).forEach { (key, value) ->
                 setAttribute(key, value)
@@ -54,8 +68,26 @@ class NsdAirPrintAdvertiser @Inject constructor(
             }
         }
 
+        val uscanListener = object : NsdManager.RegistrationListener {
+            override fun onServiceRegistered(registeredServiceInfo: NsdServiceInfo) {
+                // Ignore uscan status for now
+            }
+
+            override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+                // Ignore uscan status for now
+            }
+
+            override fun onServiceUnregistered(serviceInfo: NsdServiceInfo) {
+            }
+
+            override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+            }
+        }
+
         registrationListener = listener
+        uscanRegistrationListener = uscanListener
         nsdManager.registerService(serviceInfo, NsdManager.PROTOCOL_DNS_SD, listener)
+        nsdManager.registerService(uscanServiceInfo, NsdManager.PROTOCOL_DNS_SD, uscanListener)
     }
 
     fun unregister() {
@@ -64,10 +96,17 @@ class NsdAirPrintAdvertiser @Inject constructor(
                 nsdManager.unregisterService(listener)
             }
         }
+        uscanRegistrationListener?.let { listener ->
+            runCatching {
+                nsdManager.unregisterService(listener)
+            }
+        }
         registrationListener = null
+        uscanRegistrationListener = null
     }
 
     private companion object {
         const val SERVICE_TYPE = "_ipp._tcp."
+        const val USCAN_SERVICE_TYPE = "_uscan._tcp."
     }
 }

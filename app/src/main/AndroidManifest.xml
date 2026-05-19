@@ -30,6 +30,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name="com.canhub.cropper.CropImageActivity"
+            android:theme="@style/Theme.AirPrintReceiver" />
+
         <service
             android:name=".infrastructure.airprint.AirPrintReceiverService"
             android:exported="false"

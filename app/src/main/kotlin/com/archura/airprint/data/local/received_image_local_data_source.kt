@@ -23,18 +23,33 @@ class ReceivedImageLocalDataSource @Inject constructor(
         )
     }
 
-    fun savePdfFirstPageAsJpeg(
+    fun savePdfAllPagesAsImages(
         documentBytes: ByteArray,
         senderAddress: String?,
+        format: DocumentFormat,
     ): ReceivedImage {
-        return fileStorageManager.savePdfFirstPageAsJpeg(
+        val images = fileStorageManager.savePdfAllPagesAsImages(
             documentBytes = documentBytes,
             senderAddress = senderAddress,
+            format = format,
         )
+        return images.first()
     }
 
     fun cropReceivedImage(imageId: String): ReceivedImage {
         return fileStorageManager.cropCenterSquare(imageId)
+    }
+
+    fun applyManualCrop(imageId: String, uri: android.net.Uri): ReceivedImage {
+        return fileStorageManager.applyManualCrop(imageId, uri)
+    }
+
+    fun undoEdit(imageId: String): ReceivedImage {
+        return fileStorageManager.undoEdit(imageId)
+    }
+
+    fun hasUndo(imageId: String): Boolean {
+        return fileStorageManager.hasUndo(imageId)
     }
 
     fun deleteReceivedImage(imageId: String) {

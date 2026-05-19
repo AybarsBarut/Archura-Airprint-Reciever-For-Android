@@ -15,6 +15,12 @@ interface ReceivedImagesRepository {
 
     suspend fun cropReceivedImage(imageId: String): ReceivedImage
 
+    suspend fun applyManualCrop(imageId: String, uri: android.net.Uri): ReceivedImage
+
+    suspend fun undoEdit(imageId: String): ReceivedImage
+
+    suspend fun hasUndo(imageId: String): Boolean
+
     suspend fun deleteReceivedImage(imageId: String)
 
     suspend fun refresh()
