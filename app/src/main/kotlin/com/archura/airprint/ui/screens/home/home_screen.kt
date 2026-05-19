@@ -43,6 +43,7 @@ fun HomeScreen(
         onDeleteImage = viewModel::deleteImage,
         onOpenImage = onOpenImage,
         onOpenSettings = onOpenSettings,
+        onImportFile = viewModel::importFile,
     )
 }
 
@@ -54,7 +55,16 @@ private fun HomeContent(
     onDeleteImage: (String) -> Unit,
     onOpenImage: (String) -> Unit,
     onOpenSettings: () -> Unit,
+    onImportFile: (android.net.Uri) -> Unit,
 ) {
+    val filePickerLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+        contract = androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            onImportFile(uri)
+        }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -94,6 +104,13 @@ private fun HomeContent(
                     checked = uiState.printerStatus.enabled,
                     onCheckedChange = onToggleReceiver,
                 )
+            }
+
+            androidx.compose.material3.OutlinedButton(
+                onClick = { filePickerLauncher.launch("*/*") },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(text = "Share File with iOS (Select Image/PDF)")
             }
 
             if (uiState.images.isEmpty()) {

@@ -53,6 +53,20 @@ class FileStorageManager @Inject constructor(
         )
     }
 
+    fun importDocument(uri: Uri): ReceivedImage? {
+        val resolver = context.contentResolver
+        val mimeType = resolver.getType(uri) ?: ""
+        val format = when {
+            mimeType.contains("pdf") || uri.path?.lowercase()?.endsWith(".pdf") == true -> DocumentFormat.PDF
+            mimeType.contains("png") || uri.path?.lowercase()?.endsWith(".png") == true -> DocumentFormat.PNG
+            mimeType.contains("jpeg") || mimeType.contains("jpg") || uri.path?.lowercase()?.endsWith(".jpg") == true || uri.path?.lowercase()?.endsWith(".jpeg") == true -> DocumentFormat.JPEG
+            else -> DocumentFormat.JPEG
+        }
+
+        val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+        return saveDocument(bytes, format, "Local Device Import")
+    }
+
     fun savePdfAllPagesAsImages(
         documentBytes: ByteArray,
         senderAddress: String?,

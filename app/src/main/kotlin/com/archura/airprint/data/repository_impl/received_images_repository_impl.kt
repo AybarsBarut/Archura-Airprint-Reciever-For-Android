@@ -124,6 +124,16 @@ class ReceivedImagesRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun importDocument(uri: android.net.Uri): ReceivedImage? {
+        return withContext(Dispatchers.IO) {
+            val imported = localDataSource.importDocument(uri)
+            if (imported != null) {
+                refresh()
+            }
+            imported
+        }
+    }
+
     private fun shouldConvertPdfToImage(format: DocumentFormat): Boolean {
         val mode = sharedPrefManager.readDocumentConversionMode()
         return format == DocumentFormat.PDF &&

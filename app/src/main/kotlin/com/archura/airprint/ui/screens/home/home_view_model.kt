@@ -59,6 +59,12 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun importFile(uri: android.net.Uri) {
+        viewModelScope.launch {
+            receivedImagesRepository.importDocument(uri)
+        }
+    }
+
     private companion object {
         const val STATE_TIMEOUT_MILLIS = 5_000L
     }

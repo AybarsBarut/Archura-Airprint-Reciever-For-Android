@@ -77,4 +77,8 @@ class ReceivedImageLocalDataSource @Inject constructor(
     fun saveReceivedDocumentToDownloads(imageId: String): String {
         return fileStorageManager.saveDocumentToDownloads(imageId)
     }
+
+    fun importDocument(uri: android.net.Uri): ReceivedImage? {
+        return fileStorageManager.importDocument(uri)
+    }
 }

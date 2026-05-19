@@ -35,4 +35,6 @@ interface ReceivedImagesRepository {
     suspend fun saveReceivedImageToGallery(imageId: String): String
 
     suspend fun saveReceivedDocumentToDownloads(imageId: String): String
+
+    suspend fun importDocument(uri: android.net.Uri): ReceivedImage?
 }

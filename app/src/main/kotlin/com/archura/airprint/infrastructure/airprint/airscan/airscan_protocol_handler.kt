@@ -71,14 +71,18 @@ class AirScanProtocolHandler @Inject constructor(
 
     private fun getNextDocument(): AirScanResponse {
         val images = fileStorageManager.listReceivedImages().filter { 
-            it.format == DocumentFormat.JPEG || it.format == DocumentFormat.PNG 
+            it.format == DocumentFormat.JPEG || it.format == DocumentFormat.PNG || it.format == DocumentFormat.PDF
         }
         val latestImage = images.firstOrNull()
         
         if (latestImage != null) {
             val file = File(latestImage.path)
             if (file.exists()) {
-                val contentType = if (latestImage.format == DocumentFormat.PNG) "image/png" else "image/jpeg"
+                val contentType = when (latestImage.format) {
+                    DocumentFormat.PNG -> "image/png"
+                    DocumentFormat.PDF -> "application/pdf"
+                    else -> "image/jpeg"
+                }
                 return AirScanResponse(200, contentType, file.readBytes())
             }
         }
