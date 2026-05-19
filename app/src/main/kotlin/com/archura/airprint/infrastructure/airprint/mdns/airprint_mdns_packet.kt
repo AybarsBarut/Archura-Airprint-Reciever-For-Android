@@ -15,6 +15,7 @@ class AirPrintMdnsPacket(
 ) {
     private val ippServiceInstance = "${serviceName.sanitizeDnsLabel()}.$IPP_SERVICE_TYPE"
     private val uscanServiceInstance = "${(serviceName + " Scanner").sanitizeDnsLabel()}.$USCAN_SERVICE_TYPE"
+    private val uscansServiceInstance = "${(serviceName + " Scanner").sanitizeDnsLabel()}.$USCANS_SERVICE_TYPE"
     private val host = "${hostName.sanitizeDnsLabel()}.$LOCAL_DOMAIN"
 
     fun buildAnnouncement(): ByteArray {
@@ -46,6 +47,11 @@ class AirPrintMdnsPacket(
             ResourceRecord.srv(uscanServiceInstance, host, port),
             ResourceRecord.txt(uscanServiceInstance, uscanTxtRecords),
 
+            // UScans (Secure Scanner) Records
+            ResourceRecord.ptr(USCANS_SERVICE_TYPE, uscansServiceInstance),
+            ResourceRecord.srv(uscansServiceInstance, host, port),
+            ResourceRecord.txt(uscansServiceInstance, uscanTxtRecords),
+
             // Shared Host A Record
             ResourceRecord.a(host, localAddress),
         )
@@ -70,13 +76,19 @@ class AirPrintMdnsPacket(
         val uscanSpace = "${serviceName} Scanner.$USCAN_SERVICE_TYPE".normalizeDnsName()
         val uscanHyphen = uscanServiceInstance.normalizeDnsName()
         
+        val uscansSpace = "${serviceName} Scanner.$USCANS_SERVICE_TYPE".normalizeDnsName()
+        val uscansHyphen = uscansServiceInstance.normalizeDnsName()
+        
         return normalized == IPP_SERVICE_TYPE.normalizeDnsName() ||
             normalized == UNIVERSAL_SUBTYPE.normalizeDnsName() ||
             normalized == USCAN_SERVICE_TYPE.normalizeDnsName() ||
+            normalized == USCANS_SERVICE_TYPE.normalizeDnsName() ||
             normalized == ippSpace ||
             normalized == ippHyphen ||
             normalized == uscanSpace ||
             normalized == uscanHyphen ||
+            normalized == uscansSpace ||
+            normalized == uscansHyphen ||
             normalized == host.normalizeDnsName()
     }
 

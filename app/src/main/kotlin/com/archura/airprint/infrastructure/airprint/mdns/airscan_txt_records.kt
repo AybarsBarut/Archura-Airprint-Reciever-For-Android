@@ -22,7 +22,7 @@ object AirScanTxtRecords {
         )
 
         if (localAddress != null) {
-            records["adminurl"] = "http://$localAddress:$port/"
+            records["adminurl"] = "http://$localAddress%3A$port/"
         }
 
         return records
