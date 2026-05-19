@@ -59,23 +59,14 @@ class AirPrintReceiverService : Service() {
                 serviceName = status.serviceName,
                 port = status.port,
                 scope = serviceScope,
-            ) { _, message ->
+            ) { started, message ->
                 serviceScope.launch {
-                    printerStatusRepository.setStatusMessage(message)
-                }
-            }
-            nsdAirPrintAdvertiser.register(
-                serviceName = status.serviceName,
-                port = status.port,
-            ) { registered, error ->
-                serviceScope.launch {
-                    printerStatusRepository.setStatusMessage(
-                        message = if (registered) {
-                            "Advertising ${status.serviceName} on port ${status.port}"
-                        } else {
-                            error ?: "Unable to advertise AirPrint service"
-                        },
-                    )
+                    val finalMsg = if (started) {
+                        "Advertising ${status.serviceName} on port ${status.port}"
+                    } else {
+                        message
+                    }
+                    printerStatusRepository.setStatusMessage(finalMsg)
                 }
             }
         }
