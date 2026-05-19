@@ -10,9 +10,11 @@ class AirPrintMdnsPacket(
     private val hostName: String,
     private val port: Int,
     private val localAddress: Inet4Address,
-    private val txtRecords: Map<String, String>,
+    private val ippTxtRecords: Map<String, String>,
+    private val uscanTxtRecords: Map<String, String>,
 ) {
-    private val serviceInstance = "${serviceName.sanitizeDnsLabel()}.$IPP_SERVICE_TYPE"
+    private val ippServiceInstance = "${serviceName.sanitizeDnsLabel()}.$IPP_SERVICE_TYPE"
+    private val uscanServiceInstance = "${(serviceName + " Scanner").sanitizeDnsLabel()}.$USCAN_SERVICE_TYPE"
     private val host = "${hostName.sanitizeDnsLabel()}.$LOCAL_DOMAIN"
 
     fun buildAnnouncement(): ByteArray {
@@ -30,10 +32,18 @@ class AirPrintMdnsPacket(
 
     private fun buildResponse(): ByteArray {
         val records = listOf(
-            ResourceRecord.ptr(IPP_SERVICE_TYPE, serviceInstance),
-            ResourceRecord.ptr(UNIVERSAL_SUBTYPE, serviceInstance),
-            ResourceRecord.srv(serviceInstance, host, port),
-            ResourceRecord.txt(serviceInstance, txtRecords),
+            // IPP Records
+            ResourceRecord.ptr(IPP_SERVICE_TYPE, ippServiceInstance),
+            ResourceRecord.ptr(UNIVERSAL_SUBTYPE, ippServiceInstance),
+            ResourceRecord.srv(ippServiceInstance, host, port),
+            ResourceRecord.txt(ippServiceInstance, ippTxtRecords),
+
+            // UScan Records
+            ResourceRecord.ptr(USCAN_SERVICE_TYPE, uscanServiceInstance),
+            ResourceRecord.srv(uscanServiceInstance, host, port),
+            ResourceRecord.txt(uscanServiceInstance, uscanTxtRecords),
+
+            // Shared Host A Record
             ResourceRecord.a(host, localAddress),
         )
 
@@ -52,7 +62,9 @@ class AirPrintMdnsPacket(
         val normalized = name.normalizeDnsName()
         return normalized == IPP_SERVICE_TYPE.normalizeDnsName() ||
             normalized == UNIVERSAL_SUBTYPE.normalizeDnsName() ||
-            normalized == serviceInstance.normalizeDnsName() ||
+            normalized == USCAN_SERVICE_TYPE.normalizeDnsName() ||
+            normalized == ippServiceInstance.normalizeDnsName() ||
+            normalized == uscanServiceInstance.normalizeDnsName() ||
             normalized == host.normalizeDnsName()
     }
 
@@ -246,6 +258,7 @@ class AirPrintMdnsPacket(
         const val DEFAULT_TTL_SECONDS = 120
         const val DNS_HEADER_BYTES = 12
         const val IPP_SERVICE_TYPE = "_ipp._tcp.local."
+        const val USCAN_SERVICE_TYPE = "_uscan._tcp.local."
         const val LOCAL_DOMAIN = "local."
         const val MAX_NAME_PARTS = 64
         const val MAX_TXT_ENTRY_BYTES = 255

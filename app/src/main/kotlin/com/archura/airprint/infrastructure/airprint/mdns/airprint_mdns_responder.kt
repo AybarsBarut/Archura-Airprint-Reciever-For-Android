@@ -3,6 +3,7 @@ package com.archura.airprint.infrastructure.airprint.mdns
 import android.content.Context
 import android.net.wifi.WifiManager
 import com.archura.airprint.infrastructure.network.LocalNetworkAddressResolver
+import com.archura.airprint.infrastructure.airprint.mdns.AirScanTxtRecords
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.net.DatagramPacket
 import java.net.InetAddress
@@ -48,17 +49,25 @@ class AirPrintMdnsResponder @Inject constructor(
             return
         }
 
+        val ippTxt = AirPrintTxtRecords.build(
+            serviceName = serviceName,
+            uuid = airPrintDeviceIdentity.uuid,
+            localAddress = localAddress.hostAddress,
+            port = port,
+        )
+        val uscanTxt = AirScanTxtRecords.build(
+            serviceName = "$serviceName Scanner",
+            uuid = airPrintDeviceIdentity.uuid,
+            port = port,
+        )
+
         val packetBuilder = AirPrintMdnsPacket(
             serviceName = serviceName,
             hostName = airPrintDeviceIdentity.hostName(),
             port = port,
             localAddress = localAddress,
-            txtRecords = AirPrintTxtRecords.build(
-                serviceName = serviceName,
-                uuid = airPrintDeviceIdentity.uuid,
-                localAddress = localAddress.hostAddress,
-                port = port,
-            ),
+            ippTxtRecords = ippTxt,
+            uscanTxtRecords = uscanTxt,
         )
 
         acquireMulticastLock()
