@@ -73,6 +73,8 @@ class IppResponseBuilder @Inject constructor() {
                     listOf(
                         "application/pdf",
                         "image/jpeg",
+                        "image/png",
+                        "text/plain",
                         "image/urf",
                         "image/pwg-raster",
                     ),

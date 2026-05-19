@@ -115,8 +115,8 @@ class FileStorageManager @Inject constructor(
 
     fun saveImageToGallery(imageId: String): String {
         val imageFile = findReceivedFile(imageId)
-        require(imageFile.extension.toDocumentFormat() == DocumentFormat.JPEG) {
-            "Only JPEG images can be saved to gallery"
+        require(imageFile.extension.toDocumentFormat() in listOf(DocumentFormat.JPEG, DocumentFormat.PNG)) {
+            "Only JPEG/PNG images can be saved to gallery"
         }
 
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -146,8 +146,8 @@ class FileStorageManager @Inject constructor(
         }
 
     private fun decodeJpeg(imageFile: File): Bitmap {
-        require(imageFile.extension.toDocumentFormat() == DocumentFormat.JPEG) {
-            "Only JPEG images can be edited"
+        require(imageFile.extension.toDocumentFormat() in listOf(DocumentFormat.JPEG, DocumentFormat.PNG)) {
+            "Only JPEG/PNG images can be edited"
         }
         return requireNotNull(android.graphics.BitmapFactory.decodeFile(imageFile.absolutePath)) {
             "Unable to decode image"
@@ -189,9 +189,11 @@ class FileStorageManager @Inject constructor(
     }
 
     private fun PdfRenderer.Page.createBitmap(): Bitmap {
+        // Scale by 3 to improve PDF rendering quality
+        val scale = 3
         return Bitmap.createBitmap(
-            width.coerceAtLeast(MIN_RENDER_SIZE),
-            height.coerceAtLeast(MIN_RENDER_SIZE),
+            (width * scale).coerceAtLeast(MIN_RENDER_SIZE),
+            (height * scale).coerceAtLeast(MIN_RENDER_SIZE),
             Bitmap.Config.ARGB_8888,
         )
     }
@@ -214,14 +216,15 @@ class FileStorageManager @Inject constructor(
         targetFile: File,
     ) {
         FileOutputStream(targetFile).use { output ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, JPEG_QUALITY, output)
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, output)
         }
     }
 
     private fun saveImageToGalleryWithMediaStore(imageFile: File): Uri {
+        val format = imageFile.extension.toDocumentFormat()
         val values = ContentValues().apply {
             put(MediaStore.Images.Media.DISPLAY_NAME, imageFile.name)
-            put(MediaStore.Images.Media.MIME_TYPE, DocumentFormat.JPEG.mimeType)
+            put(MediaStore.Images.Media.MIME_TYPE, format.mimeType)
             put(MediaStore.Images.Media.RELATIVE_PATH, "$PICTURES_DIRECTORY/$GALLERY_DIRECTORY")
             put(MediaStore.Images.Media.IS_PENDING, 1)
         }
@@ -258,10 +261,11 @@ class FileStorageManager @Inject constructor(
         }
         val targetFile = File(directory, imageFile.name)
         imageFile.copyTo(targetFile, overwrite = true)
+        val format = imageFile.extension.toDocumentFormat()
         MediaScannerConnection.scanFile(
             context,
             arrayOf(targetFile.absolutePath),
-            arrayOf(DocumentFormat.JPEG.mimeType),
+            arrayOf(format.mimeType),
             null,
         )
         return targetFile
@@ -286,6 +290,8 @@ class FileStorageManager @Inject constructor(
     private fun String.toDocumentFormat(): DocumentFormat {
         return when (lowercase()) {
             DocumentFormat.JPEG.extension -> DocumentFormat.JPEG
+            DocumentFormat.PNG.extension -> DocumentFormat.PNG
+            DocumentFormat.TXT.extension -> DocumentFormat.TXT
             DocumentFormat.PDF.extension -> DocumentFormat.PDF
             DocumentFormat.URF.extension -> DocumentFormat.URF
             DocumentFormat.PWG_RASTER.extension -> DocumentFormat.PWG_RASTER

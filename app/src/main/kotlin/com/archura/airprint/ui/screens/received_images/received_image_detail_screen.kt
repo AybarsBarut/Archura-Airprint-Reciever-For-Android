@@ -112,7 +112,7 @@ private fun ImageActions(
     onSaveToGallery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isEditable = image.format == DocumentFormat.JPEG && !isBusy
+    val isEditable = (image.format == DocumentFormat.JPEG || image.format == DocumentFormat.PNG) && !isBusy
 
     Column(
         modifier = modifier
@@ -175,9 +175,9 @@ private fun ImageActions(
             }
         }
 
-        if (image.format != DocumentFormat.JPEG) {
+        if (image.format != DocumentFormat.JPEG && image.format != DocumentFormat.PNG) {
             Text(
-                text = "Only JPEG images can be edited or saved to gallery. Convert incoming PDFs to JPEG in Settings.",
+                text = "Only JPEG/PNG images can be edited or saved to gallery. Convert incoming PDFs to JPEG in Settings.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -200,7 +200,7 @@ private fun ImagePreview(
     modifier: Modifier = Modifier,
 ) {
     val bitmap = remember(image.path, image.timestampMillis, image.sizeBytes) {
-        if (image.format == DocumentFormat.JPEG) {
+        if (image.format == DocumentFormat.JPEG || image.format == DocumentFormat.PNG) {
             BitmapFactory.decodeFile(image.path)?.asImageBitmap()
         } else {
             null
