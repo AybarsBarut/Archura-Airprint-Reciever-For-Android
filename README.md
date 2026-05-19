@@ -31,7 +31,7 @@ By leveraging native printing protocols, this app functions as a zero-configurat
 ## 📸 User Interface Preview
 
 <p align="center">
-  <img src="docs/images/ui_mockup.png" alt="Archura AirPrint Receiver UI Preview" width="360" />
+  <img width="1080" height="2400" alt="Screenshot_2026-05-19-14-35-14-866_com archura airprint" src="https://github.com/user-attachments/assets/40ba71ca-924b-477c-870c-46b4c9939526" />
 </p>
 
 ---
