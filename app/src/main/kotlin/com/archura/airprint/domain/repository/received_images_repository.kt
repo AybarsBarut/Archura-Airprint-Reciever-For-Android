@@ -33,4 +33,6 @@ interface ReceivedImagesRepository {
     ): ReceivedImage
 
     suspend fun saveReceivedImageToGallery(imageId: String): String
+
+    suspend fun saveReceivedDocumentToDownloads(imageId: String): String
 }

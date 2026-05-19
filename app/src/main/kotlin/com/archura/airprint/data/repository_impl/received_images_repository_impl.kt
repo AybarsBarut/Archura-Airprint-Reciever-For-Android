@@ -118,6 +118,12 @@ class ReceivedImagesRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun saveReceivedDocumentToDownloads(imageId: String): String {
+        return withContext(Dispatchers.IO) {
+            localDataSource.saveReceivedDocumentToDownloads(imageId)
+        }
+    }
+
     private fun shouldConvertPdfToImage(format: DocumentFormat): Boolean {
         val mode = sharedPrefManager.readDocumentConversionMode()
         return format == DocumentFormat.PDF &&

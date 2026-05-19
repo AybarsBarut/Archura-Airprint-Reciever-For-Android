@@ -193,6 +193,63 @@ class FileStorageManager @Inject constructor(
         }
     }
 
+    fun saveDocumentToDownloads(imageId: String): String {
+        val imageFile = findReceivedFile(imageId)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            saveDocumentToDownloadsWithMediaStore(imageFile).toString()
+        } else {
+            saveDocumentToLegacyDownloads(imageFile).absolutePath
+        }
+    }
+
+    private fun saveDocumentToDownloadsWithMediaStore(imageFile: File): Uri {
+        val format = imageFile.extension.toDocumentFormat()
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, imageFile.name)
+            put(MediaStore.Downloads.MIME_TYPE, format.mimeType)
+            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            put(MediaStore.Downloads.IS_PENDING, 1)
+        }
+
+        val resolver = context.contentResolver
+        val uri = requireNotNull(
+            resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values),
+        ) {
+            "Unable to create downloads document"
+        }
+
+        resolver.openOutputStream(uri).use { output ->
+            requireNotNull(output) {
+                "Unable to open downloads output stream"
+            }
+            imageFile.inputStream().use { input ->
+                input.copyTo(output)
+            }
+        }
+
+        values.clear()
+        values.put(MediaStore.Downloads.IS_PENDING, 0)
+        resolver.update(uri, values, null, null)
+        return uri
+    }
+
+    private fun saveDocumentToLegacyDownloads(imageFile: File): File {
+        val directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        if (!directory.exists()) {
+            directory.mkdirs()
+        }
+        val targetFile = File(directory, imageFile.name)
+        imageFile.copyTo(targetFile, overwrite = true)
+        val format = imageFile.extension.toDocumentFormat()
+        MediaScannerConnection.scanFile(
+            context,
+            arrayOf(targetFile.absolutePath),
+            arrayOf(format.mimeType),
+            null,
+        )
+        return targetFile
+    }
+
     private val receivedDirectory: File
         get() {
             val picturesDir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)

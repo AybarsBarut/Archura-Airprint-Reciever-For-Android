@@ -38,6 +38,7 @@ import com.archura.airprint.domain.model.DocumentFormat
 import com.archura.airprint.domain.model.ReceivedImage
 import com.archura.airprint.util.formatTimestamp
 
+import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import com.canhub.cropper.CropImageContract
@@ -64,6 +65,7 @@ fun ReceivedImageDetailScreen(
         onRotateRight = viewModel::rotateRight,
         onUndoEdit = viewModel::undoEdit,
         onSaveToGallery = viewModel::saveToGallery,
+        onSaveToDownloads = viewModel::saveToDownloads,
         onConvertFormat = viewModel::convertFormat,
     )
 }
@@ -79,8 +81,12 @@ private fun ReceivedImageDetailContent(
     onRotateRight: () -> Unit,
     onUndoEdit: () -> Unit,
     onSaveToGallery: () -> Unit,
+    onSaveToDownloads: () -> Unit,
     onConvertFormat: (DocumentFormat) -> Unit,
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val image = uiState.image
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -90,10 +96,36 @@ private fun ReceivedImageDetailContent(
                         Text(text = "<")
                     }
                 },
+                actions = {
+                    if (image != null) {
+                        IconButton(
+                            onClick = {
+                                val file = File(image.path)
+                                val uri = androidx.core.content.FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.fileprovider",
+                                    file
+                                )
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = image.format.mimeType
+                                    putExtra(Intent.EXTRA_STREAM, uri)
+                                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                }
+                                context.startActivity(Intent.createChooser(intent, "Share Document"))
+                            }
+                        ) {
+                            Text(
+                                text = "Share",
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(horizontal = 8.dp)
+                            )
+                        }
+                    }
+                }
             )
         },
     ) { paddingValues ->
-        val image = uiState.image
         if (image == null) {
             MissingImage(
                 modifier = Modifier
@@ -112,6 +144,7 @@ private fun ReceivedImageDetailContent(
                 onRotateRight = onRotateRight,
                 onUndoEdit = onUndoEdit,
                 onSaveToGallery = onSaveToGallery,
+                onSaveToDownloads = onSaveToDownloads,
                 onConvertFormat = onConvertFormat,
                 modifier = Modifier
                     .fillMaxSize()
@@ -133,6 +166,7 @@ private fun ImageActions(
     onRotateRight: () -> Unit,
     onUndoEdit: () -> Unit,
     onSaveToGallery: () -> Unit,
+    onSaveToDownloads: () -> Unit,
     onConvertFormat: (DocumentFormat) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -228,12 +262,27 @@ private fun ImageActions(
                     Text(text = "Undo Edit")
                 }
             }
+            if (image.format == DocumentFormat.JPEG || image.format == DocumentFormat.PNG) {
+                Button(
+                    onClick = onSaveToGallery,
+                    enabled = isEditable,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(text = "Save gallery")
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             Button(
-                onClick = onSaveToGallery,
-                enabled = isEditable,
+                onClick = onSaveToDownloads,
+                enabled = !isBusy,
                 modifier = Modifier.weight(1f),
             ) {
-                Text(text = "Save gallery")
+                Text(text = "Save to Downloads")
             }
         }
 

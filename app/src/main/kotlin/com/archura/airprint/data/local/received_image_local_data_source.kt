@@ -73,4 +73,8 @@ class ReceivedImageLocalDataSource @Inject constructor(
     fun saveReceivedImageToGallery(imageId: String): String {
         return fileStorageManager.saveImageToGallery(imageId)
     }
+
+    fun saveReceivedDocumentToDownloads(imageId: String): String {
+        return fileStorageManager.saveDocumentToDownloads(imageId)
+    }
 }

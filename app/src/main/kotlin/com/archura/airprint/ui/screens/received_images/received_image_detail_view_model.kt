@@ -79,6 +79,12 @@ class ReceivedImageDetailViewModel @Inject constructor(
         }
     }
 
+    fun saveToDownloads() {
+        runImageOperation(successMessage = "Saved to Downloads") {
+            receivedImagesRepository.saveReceivedDocumentToDownloads(imageId)
+        }
+    }
+
     private fun runImageOperation(
         successMessage: String,
         operation: suspend () -> Any,
