@@ -87,6 +87,35 @@ class FileStorageManager @Inject constructor(
         return imageFile.toReceivedImage()
     }
 
+    fun convertFormat(imageId: String, targetFormat: DocumentFormat): ReceivedImage {
+        val oldFile = findReceivedFile(imageId)
+        val oldFormat = oldFile.extension.toDocumentFormat()
+        require(oldFormat != targetFormat) { "File is already in $targetFormat" }
+
+        val newFileName = "${oldFile.nameWithoutExtension}.${targetFormat.extension}"
+        val newFile = File(oldFile.parentFile, newFileName)
+
+        if (oldFormat == DocumentFormat.PDF) {
+            val pdfBytes = oldFile.readBytes()
+            val generated = savePdfAllPagesAsImages(pdfBytes, null, targetFormat)
+            if (generated.isNotEmpty()) {
+                oldFile.delete()
+                return generated.first()
+            } else {
+                error("Failed to render PDF pages")
+            }
+        } else if (oldFormat == DocumentFormat.JPEG || oldFormat == DocumentFormat.PNG) {
+            val bitmap = decodeImage(oldFile)
+            writeBitmap(bitmap, newFile)
+            bitmap.recycle()
+            oldFile.delete()
+            File(oldFile.absolutePath + ".bak").delete()
+            return newFile.toReceivedImage()
+        } else {
+            error("Unsupported format conversion from $oldFormat")
+        }
+    }
+
     fun hasUndo(imageId: String): Boolean {
         val imageFile = findReceivedFile(imageId)
         return File(imageFile.absolutePath + ".bak").exists()

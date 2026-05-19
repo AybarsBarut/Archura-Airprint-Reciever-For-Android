@@ -48,6 +48,10 @@ class ReceivedImageLocalDataSource @Inject constructor(
         return fileStorageManager.undoEdit(imageId)
     }
 
+    fun convertFormat(imageId: String, targetFormat: DocumentFormat): ReceivedImage {
+        return fileStorageManager.convertFormat(imageId, targetFormat)
+    }
+
     fun hasUndo(imageId: String): Boolean {
         return fileStorageManager.hasUndo(imageId)
     }

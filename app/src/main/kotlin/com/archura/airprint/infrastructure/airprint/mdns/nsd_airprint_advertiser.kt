@@ -38,11 +38,11 @@ class NsdAirPrintAdvertiser @Inject constructor(
         }
 
         val uscanServiceInfo = NsdServiceInfo().apply {
-            this.serviceName = serviceName
+            this.serviceName = "$serviceName Scanner"
             serviceType = USCAN_SERVICE_TYPE
             this.port = port
             AirScanTxtRecords.build(
-                serviceName = serviceName,
+                serviceName = "$serviceName Scanner",
                 uuid = airPrintDeviceIdentity.uuid,
                 port = port,
             ).forEach { (key, value) ->
@@ -52,35 +52,41 @@ class NsdAirPrintAdvertiser @Inject constructor(
 
         val listener = object : NsdManager.RegistrationListener {
             override fun onServiceRegistered(registeredServiceInfo: NsdServiceInfo) {
+                android.util.Log.i("NsdAirPrintAdvertiser", "IPP service registered successfully: ${registeredServiceInfo.serviceName}")
                 onStatusChanged(true, null)
             }
 
             override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+                android.util.Log.e("NsdAirPrintAdvertiser", "IPP service registration failed: $errorCode")
                 onStatusChanged(false, "mDNS registration failed: $errorCode")
             }
 
             override fun onServiceUnregistered(serviceInfo: NsdServiceInfo) {
+                android.util.Log.i("NsdAirPrintAdvertiser", "IPP service unregistered")
                 onStatusChanged(false, "mDNS service unregistered")
             }
 
             override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+                android.util.Log.e("NsdAirPrintAdvertiser", "IPP service unregistration failed: $errorCode")
                 onStatusChanged(false, "mDNS unregister failed: $errorCode")
             }
         }
 
         val uscanListener = object : NsdManager.RegistrationListener {
             override fun onServiceRegistered(registeredServiceInfo: NsdServiceInfo) {
-                // Ignore uscan status for now
+                android.util.Log.i("NsdAirPrintAdvertiser", "AirScan service registered successfully: ${registeredServiceInfo.serviceName}")
             }
 
             override fun onRegistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-                // Ignore uscan status for now
+                android.util.Log.e("NsdAirPrintAdvertiser", "AirScan service registration failed: $errorCode")
             }
 
             override fun onServiceUnregistered(serviceInfo: NsdServiceInfo) {
+                android.util.Log.i("NsdAirPrintAdvertiser", "AirScan service unregistered")
             }
 
             override fun onUnregistrationFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
+                android.util.Log.e("NsdAirPrintAdvertiser", "AirScan service unregistration failed: $errorCode")
             }
         }
 

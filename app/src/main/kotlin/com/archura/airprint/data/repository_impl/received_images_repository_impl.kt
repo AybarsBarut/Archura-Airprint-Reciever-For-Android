@@ -73,6 +73,14 @@ class ReceivedImagesRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun convertFormat(imageId: String, targetFormat: DocumentFormat): ReceivedImage {
+        return withContext(Dispatchers.IO) {
+            val convertedImage = localDataSource.convertFormat(imageId, targetFormat)
+            refresh()
+            convertedImage
+        }
+    }
+
     override suspend fun hasUndo(imageId: String): Boolean {
         return withContext(Dispatchers.IO) {
             localDataSource.hasUndo(imageId)

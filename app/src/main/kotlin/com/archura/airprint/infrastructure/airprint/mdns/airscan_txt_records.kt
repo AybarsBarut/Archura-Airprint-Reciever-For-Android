@@ -5,12 +5,15 @@ object AirScanTxtRecords {
         return mapOf(
             "txtvers" to "1",
             "ty" to serviceName,
-            "adminurl" to "http://local:$port/",
-            "pdl" to "application/pdf,image/jpeg",
-            "cs" to "color,grayscale",
+            "note" to "AirScan Android",
+            "vers" to "2.5",
             "rs" to "eSCL",
+            "pdl" to "application/octet-stream,image/jpeg,application/pdf",
+            "cs" to "binary,grayscale,color",
+            "is" to "platen",
+            "duplex" to "F",
             "UUID" to uuid,
-            "representation" to "http://local:$port/icon.png",
+            "adminurl" to "http://localhost:$port/",
         )
     }
 }

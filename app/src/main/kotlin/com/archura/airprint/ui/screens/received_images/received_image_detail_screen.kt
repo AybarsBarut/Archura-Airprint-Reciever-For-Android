@@ -64,6 +64,7 @@ fun ReceivedImageDetailScreen(
         onRotateRight = viewModel::rotateRight,
         onUndoEdit = viewModel::undoEdit,
         onSaveToGallery = viewModel::saveToGallery,
+        onConvertFormat = viewModel::convertFormat,
     )
 }
 
@@ -78,6 +79,7 @@ private fun ReceivedImageDetailContent(
     onRotateRight: () -> Unit,
     onUndoEdit: () -> Unit,
     onSaveToGallery: () -> Unit,
+    onConvertFormat: (DocumentFormat) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -110,6 +112,7 @@ private fun ReceivedImageDetailContent(
                 onRotateRight = onRotateRight,
                 onUndoEdit = onUndoEdit,
                 onSaveToGallery = onSaveToGallery,
+                onConvertFormat = onConvertFormat,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
@@ -130,6 +133,7 @@ private fun ImageActions(
     onRotateRight: () -> Unit,
     onUndoEdit: () -> Unit,
     onSaveToGallery: () -> Unit,
+    onConvertFormat: (DocumentFormat) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isEditable = (image.format == DocumentFormat.JPEG || image.format == DocumentFormat.PNG) && !isBusy
@@ -230,6 +234,44 @@ private fun ImageActions(
                 modifier = Modifier.weight(1f),
             ) {
                 Text(text = "Save gallery")
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            if (image.format == DocumentFormat.PDF) {
+                Button(
+                    onClick = { onConvertFormat(DocumentFormat.JPEG) },
+                    enabled = !isBusy,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(text = "Convert to JPEG")
+                }
+                Button(
+                    onClick = { onConvertFormat(DocumentFormat.PNG) },
+                    enabled = !isBusy,
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text(text = "Convert to PNG")
+                }
+            } else if (image.format == DocumentFormat.JPEG) {
+                OutlinedButton(
+                    onClick = { onConvertFormat(DocumentFormat.PNG) },
+                    enabled = !isBusy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(text = "Convert to PNG")
+                }
+            } else if (image.format == DocumentFormat.PNG) {
+                OutlinedButton(
+                    onClick = { onConvertFormat(DocumentFormat.JPEG) },
+                    enabled = !isBusy,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(text = "Convert to JPEG")
+                }
             }
         }
 

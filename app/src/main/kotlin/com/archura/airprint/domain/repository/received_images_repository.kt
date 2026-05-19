@@ -19,6 +19,8 @@ interface ReceivedImagesRepository {
 
     suspend fun undoEdit(imageId: String): ReceivedImage
 
+    suspend fun convertFormat(imageId: String, targetFormat: DocumentFormat): ReceivedImage
+    
     suspend fun hasUndo(imageId: String): Boolean
 
     suspend fun deleteReceivedImage(imageId: String)

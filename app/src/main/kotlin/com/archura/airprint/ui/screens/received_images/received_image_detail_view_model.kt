@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import com.archura.airprint.domain.model.DocumentFormat
+
 @HiltViewModel
 class ReceivedImageDetailViewModel @Inject constructor(
     private val receivedImagesRepository: ReceivedImagesRepository,
@@ -50,6 +52,12 @@ class ReceivedImageDetailViewModel @Inject constructor(
     fun undoEdit() {
         runImageOperation(successMessage = "Edit reverted") {
             receivedImagesRepository.undoEdit(imageId)
+        }
+    }
+
+    fun convertFormat(targetFormat: DocumentFormat) {
+        runImageOperation(successMessage = "Converted to ${targetFormat.displayName}") {
+            receivedImagesRepository.convertFormat(imageId, targetFormat)
         }
     }
 
