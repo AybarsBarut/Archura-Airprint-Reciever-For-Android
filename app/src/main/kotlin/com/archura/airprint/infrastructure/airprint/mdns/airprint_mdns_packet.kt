@@ -69,13 +69,26 @@ class AirPrintMdnsPacket(
 
     private fun MdnsQuestion.isAirPrintQuestion(): Boolean {
         val normalized = name.normalizeDnsName()
+        
+        val ippSpace = "${serviceName}.$IPP_SERVICE_TYPE".normalizeDnsName()
+        val ippHyphen = ippServiceInstance.normalizeDnsName()
+        
+        val uscanSpace = "${serviceName} Scanner.$USCAN_SERVICE_TYPE".normalizeDnsName()
+        val uscanHyphen = uscanServiceInstance.normalizeDnsName()
+        
+        val uscansSpace = "${serviceName} Scanner.$USCANS_SERVICE_TYPE".normalizeDnsName()
+        val uscansHyphen = uscansServiceInstance.normalizeDnsName()
+        
         return normalized == IPP_SERVICE_TYPE.normalizeDnsName() ||
             normalized == UNIVERSAL_SUBTYPE.normalizeDnsName() ||
             normalized == USCAN_SERVICE_TYPE.normalizeDnsName() ||
             normalized == USCANS_SERVICE_TYPE.normalizeDnsName() ||
-            normalized == ippServiceInstance.normalizeDnsName() ||
-            normalized == uscanServiceInstance.normalizeDnsName() ||
-            normalized == uscansServiceInstance.normalizeDnsName() ||
+            normalized == ippSpace ||
+            normalized == ippHyphen ||
+            normalized == uscanSpace ||
+            normalized == uscanHyphen ||
+            normalized == uscansSpace ||
+            normalized == uscansHyphen ||
             normalized == host.normalizeDnsName()
     }
 

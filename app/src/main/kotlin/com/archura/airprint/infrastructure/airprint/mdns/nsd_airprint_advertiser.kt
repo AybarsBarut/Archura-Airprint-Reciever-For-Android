@@ -23,12 +23,15 @@ class NsdAirPrintAdvertiser @Inject constructor(
     ) {
         unregister()
 
+        val sanitizedServiceName = serviceName.replace(Regex("[^A-Za-z0-9-]"), "-").trim('-').ifBlank { "airprint" }
+        val sanitizedUscanServiceName = (serviceName + " Scanner").replace(Regex("[^A-Za-z0-9-]"), "-").trim('-').ifBlank { "airprint" }
+
         val serviceInfo = NsdServiceInfo().apply {
-            this.serviceName = serviceName
+            this.serviceName = sanitizedServiceName
             serviceType = SERVICE_TYPE
             this.port = port
             AirPrintTxtRecords.build(
-                serviceName = serviceName,
+                serviceName = sanitizedServiceName,
                 uuid = airPrintDeviceIdentity.uuid,
                 localAddress = null,
                 port = port,
@@ -38,11 +41,11 @@ class NsdAirPrintAdvertiser @Inject constructor(
         }
 
         val uscanServiceInfo = NsdServiceInfo().apply {
-            this.serviceName = "$serviceName Scanner"
+            this.serviceName = sanitizedUscanServiceName
             serviceType = USCAN_SERVICE_TYPE
             this.port = port
             AirScanTxtRecords.build(
-                serviceName = "$serviceName Scanner",
+                serviceName = sanitizedUscanServiceName,
                 uuid = airPrintDeviceIdentity.uuid,
                 localAddress = null,
                 port = port,
