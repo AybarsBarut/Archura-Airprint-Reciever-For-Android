@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AirPrint Receiver</string>
+    <string name="airprint_service_channel_name">AirPrint Receiver</string>
+    <string name="airprint_service_notification">Ready for local AirPrint jobs</string>
+</resources>

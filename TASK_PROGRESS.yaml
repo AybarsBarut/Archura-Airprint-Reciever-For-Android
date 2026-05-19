@@ -1,0 +1,226 @@
+project:
+  name: AirPrint Photo Receiver for Android
+  short_name: APR-Android
+  owner: Archura
+  protocol: Nexus-APCP v1.0
+  start_date: 2026-05-19
+  last_updated: 2026-05-19
+
+sprint_summary:
+  total_tasks: 11
+  completed: 1
+  in_progress: 2
+  not_started: 8
+  completion_percentage: 18
+  risks:
+    - IPP attribute parsing still needs full RFC 8010 and RFC 8011 implementation.
+    - AirPrint discovery may need lower-level mDNS subtype support beyond Android NsdManager.
+    - Real-device validation requires iOS or macOS on same local network.
+
+tasks:
+  - id: APR-001
+    title: Project Structure and Build Setup
+    status: COMPLETED
+    priority: CRITICAL
+    assigned_to: Archura
+    start_date: 2026-05-19
+    due_date: 2026-05-22
+    effort_estimate: 4h
+    actual_effort: 1h
+    subtasks:
+      - Create Android app module with Kotlin DSL Gradle setup.
+      - Add Clean Architecture package hierarchy.
+      - Add Compose, Hilt, coroutine, test, and detekt dependencies.
+      - Add initial README, docs, and checkpoint scripts.
+      - Add starter unit tests for IPP parsing and document decoding.
+    blockers: null
+    dependencies: []
+
+  - id: APR-002
+    title: mDNS Advertiser
+    status: IN_PROGRESS
+    priority: CRITICAL
+    assigned_to: Archura
+    start_date: null
+    due_date: 2026-05-24
+    effort_estimate: 6h
+    actual_effort: 1h
+    subtasks:
+      - Add custom multicast DNS responder for AirPrint subtype discovery.
+      - Publish _universal._sub._ipp._tcp.local responses for iOS and macOS.
+      - Add CHANGE_WIFI_MULTICAST_STATE permission and multicast lock.
+      - Harden NsdAirPrintAdvertiser lifecycle and error handling.
+      - Validate TXT records against iOS and macOS discovery behavior.
+      - Investigate subtype advertisement for universal AirPrint discovery.
+      - Add instrumentation test strategy for service registration.
+    blockers: null
+    dependencies:
+      - APR-001
+
+  - id: APR-003
+    title: IPP Protocol Parsing
+    status: NOT_STARTED
+    priority: CRITICAL
+    assigned_to: Archura
+    start_date: null
+    due_date: 2026-05-28
+    effort_estimate: 8h
+    actual_effort: 0h
+    subtasks:
+      - Implement full IPP attribute parser.
+      - Model operation, job, and printer attribute groups.
+      - Add malformed request handling.
+      - Expand parser and response builder unit tests.
+    blockers: null
+    dependencies:
+      - APR-001
+
+  - id: APR-004
+    title: IPP Print Server
+    status: NOT_STARTED
+    priority: CRITICAL
+    assigned_to: Archura
+    start_date: null
+    due_date: 2026-06-02
+    effort_estimate: 10h
+    actual_effort: 0h
+    subtasks:
+      - Harden HTTP request parser.
+      - Add content length and MIME validation.
+      - Implement operation-specific handlers.
+      - Add integration tests with a mock IPP client.
+    blockers: null
+    dependencies:
+      - APR-001
+      - APR-003
+
+  - id: APR-005
+    title: Document Format Detection and Handlers
+    status: NOT_STARTED
+    priority: HIGH
+    assigned_to: Archura
+    start_date: null
+    due_date: 2026-06-04
+    effort_estimate: 6h
+    actual_effort: 0h
+    subtasks:
+      - Validate JPEG and PDF payload boundaries.
+      - Add PDF preview strategy.
+      - Stub or implement URF and PWG Raster conversion.
+      - Add sample payload tests.
+    blockers: null
+    dependencies:
+      - APR-004
+
+  - id: APR-006
+    title: Data Layer and Repositories
+    status: NOT_STARTED
+    priority: HIGH
+    assigned_to: Archura
+    start_date: null
+    due_date: 2026-06-05
+    effort_estimate: 5h
+    actual_effort: 0h
+    subtasks:
+      - Add metadata persistence for sender and format.
+      - Add file format conversion setting for received AirPrint PDFs.
+      - Convert incoming PDF first page to JPEG with Android PdfRenderer.
+      - Add delete and refresh tests.
+      - Decide whether app-owned files need a Room index.
+    blockers: null
+    dependencies:
+      - APR-001
+
+  - id: APR-007
+    title: Foreground Service
+    status: NOT_STARTED
+    priority: CRITICAL
+    assigned_to: Archura
+    start_date: null
+    due_date: 2026-06-06
+    effort_estimate: 4h
+    actual_effort: 0h
+    subtasks:
+      - Add runtime notification permission flow.
+      - Add service restart and shutdown tests.
+      - Improve notification actions.
+    blockers: null
+    dependencies:
+      - APR-002
+      - APR-004
+
+  - id: APR-008
+    title: Home Screen UI
+    status: IN_PROGRESS
+    priority: HIGH
+    assigned_to: Archura
+    start_date: null
+    due_date: 2026-06-08
+    effort_estimate: 8h
+    actual_effort: 2h
+    subtasks:
+      - Add received image detail screen.
+      - Add JPEG rotate left and rotate right actions.
+      - Add center square crop action.
+      - Add save to gallery action through MediaStore.
+      - Add permission states.
+      - Add received item detail view.
+      - Add HomeViewModel tests.
+      - Add Compose UI tests.
+    blockers: null
+    dependencies:
+      - APR-006
+
+  - id: APR-009
+    title: Settings Screen
+    status: NOT_STARTED
+    priority: MEDIUM
+    assigned_to: Archura
+    start_date: null
+    due_date: 2026-06-09
+    effort_estimate: 4h
+    actual_effort: 0h
+    subtasks:
+      - Validate printer name.
+      - Validate port conflicts.
+      - Add service restart prompt after settings changes.
+    blockers: null
+    dependencies:
+      - APR-008
+
+  - id: APR-010
+    title: End-to-End Testing
+    status: NOT_STARTED
+    priority: HIGH
+    assigned_to: Archura
+    start_date: null
+    due_date: 2026-06-11
+    effort_estimate: 6h
+    actual_effort: 0h
+    subtasks:
+      - Test JPEG from iOS Photos.
+      - Test PDF from macOS print dialog.
+      - Verify service lifecycle under network changes.
+      - Document observed device compatibility.
+    blockers: null
+    dependencies:
+      - APR-007
+      - APR-008
+
+  - id: APR-011
+    title: Documentation and Troubleshooting
+    status: NOT_STARTED
+    priority: MEDIUM
+    assigned_to: Archura
+    start_date: null
+    due_date: 2026-06-12
+    effort_estimate: 4h
+    actual_effort: 0h
+    subtasks:
+      - Expand architecture docs after protocol implementation.
+      - Add device testing notes.
+      - Add known discovery limitations.
+      - Keep troubleshooting aligned with actual failures.
+    blockers: null
+    dependencies:
+      - APR-010
